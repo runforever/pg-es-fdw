@@ -10,8 +10,18 @@ from functools import partial
 import httplib
 import json
 import logging
+from datetime import datetime
 
-class ElasticsearchFDW (ForeignDataWrapper):
+
+class ESJsonEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.strftime('%Y-%m-%d %H:%M:%S')
+        return json.JSONEncoder.default(self, obj)
+
+
+class ElasticsearchFDW(ForeignDataWrapper):
 
     def __init__(self, options, columns):
         super(ElasticsearchFDW, self).__init__(options, columns)
@@ -69,7 +79,7 @@ class ElasticsearchFDW (ForeignDataWrapper):
         return 'id';
 
     def es_index(self, id, values):
-        content = json.dumps(values)
+        content = json.dumps(values, cls=ESJsonEncoder)
 
         conn = httplib.HTTPConnection(self.host, self.port)
         conn.request("PUT", "/%s/%s/%s" % (self.node, self.index, id), content)
